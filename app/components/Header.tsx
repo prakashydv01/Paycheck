@@ -13,12 +13,13 @@ export default function Header() {
         {/* Left: Brand / Logo */}
         <Link href="/" className="flex items-center gap-3">
           <div className="rounded-full bg-gradient-to-br from-white-600 to-cyan-400 p-2 shadow-md">
-           
-            {/* Logo removed: You can insert your own logo SVG or <Image> here */}
+            {/* Optional small mark — can be an SVG or left empty for text-only brand */}
           </div>
-          <div className="hidden sm:block">
-            <h1 className="text-lg font-semibold text-gray-900 dark:text-white leading-none">US Paycheck</h1>
-            <p className="text-xs text-gray-500">Fast, accurate paycheck & tax tools</p>
+
+          {/* Make the brand text visible on mobile too. Keep the short tagline hidden on xs. */}
+          <div className="block leading-none">
+            <h1 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">US Paycheck</h1>
+            <p className="text-xs text-gray-500 hidden sm:block">Fast, accurate paycheck &amp; tax tools</p>
           </div>
         </Link>
 
@@ -31,6 +32,7 @@ export default function Header() {
             >
               Home
             </Link>
+            {/* Add other desktop links here (Calculator, About, Contact) */}
           </nav>
 
           <button
@@ -58,6 +60,7 @@ export default function Header() {
             >
               <span className="text-sm font-medium">Home</span>
             </Link>
+            {/* Add other mobile nav items: Calculator, About, Contact */}
           </nav>
         </div>
       </div>
