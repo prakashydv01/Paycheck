@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+
+# Disallow any admin or private paths
+Disallow: /api/admin
+Disallow: /admin
+Disallow: /private
+
+# Put your sitemap URL here
+Sitemap: https://uspaycheck.com/sitemap.xml
+Host: https://uspaycheck.com
