@@ -1,6 +1,7 @@
 import PaycheckCalculator from "@/app/components/paycheckCalc"
 import ArticleAndFAQ from "./components/article"
 
+
 export default function Page() {
   return (
     <main className="min-h-screen bg-gray-50 dark:bg-gray-950 py-12 px-6">
@@ -16,6 +17,7 @@ export default function Page() {
         
         <PaycheckCalculator />
         <ArticleAndFAQ />
+        
       </div>
     </main>
   )
