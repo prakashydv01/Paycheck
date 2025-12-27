@@ -32,7 +32,15 @@ export default function Header() {
             >
               Home
             </Link>
-            {/* Add other desktop links here (Calculator, About, Contact) */}
+            <Link
+              href="/income-tax-calculator"
+              className="text-sm font-medium px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+            >
+              Income Tax Calculator
+            </Link>
+            
+            
+            
           </nav>
 
           <button

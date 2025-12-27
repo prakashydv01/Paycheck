@@ -258,7 +258,7 @@ URL.revokeObjectURL(url);
             </label>
 
             <div className="ml-auto text-sm text-gray-600 dark:text-gray-300">Pay period:
-              <select className="ml-2 bg-transparent text-gray-900 dark:text-white p-1 rounded" value={payPeriod} onChange={(e)=> setPayPeriod(e.target.value as PayPeriod)}>
+              <select className="ml-2 bg-transparent text-gray-900 dark:text-white dark:bg-gray-800 p-1 rounded" value={payPeriod} onChange={(e)=> setPayPeriod(e.target.value as PayPeriod)}>
                 <option value="weekly">Weekly</option>
                 <option value="biweekly">Biweekly</option>
                 <option value="semimonthly">Semi-monthly</option>
