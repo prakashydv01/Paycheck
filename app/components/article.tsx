@@ -35,7 +35,7 @@ export default function ComprehensivePaycheckGuidePage() {
       {/* Header */}
       <header className="mb-12">
         <div className="inline-block px-4 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm font-medium mb-4">
-          Complete Guide • Updated December 2025
+          Complete Guide to US Paychecks 
         </div>
         
         <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white mb-6 leading-tight">

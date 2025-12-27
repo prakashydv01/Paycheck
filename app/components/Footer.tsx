@@ -24,7 +24,7 @@ export default function Footer() {
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">Paycheck Next</h2>
             <p className="text-sm leading-relaxed">
               Calculate your take-home pay for any U.S. state.  
-              Fast, accurate, and beautifully simple — built with Next.js.
+              Fast, accurate, and beautifully simple.
             </p>
           </div>
 
