@@ -120,7 +120,7 @@ export default function SalaryCalculator() {
       <div className="space-y-6 mb-8 ">
         {/* Amount Input */}
         <div className="relative">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-800 mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             {mode === 'hourly-to-salary' ? 'Hourly Wage' : 'Annual Salary'}
           </label>
           <div className="relative">
