@@ -38,6 +38,12 @@ export default function Header() {
             >
               Income Tax Calculator
             </Link>
+            <Link
+              href="/Salary-Calculator"
+              className="text-sm font-medium px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+            >
+              Salary Calculator
+            </Link>
             
             
             
@@ -67,6 +73,20 @@ export default function Header() {
               className="flex items-center gap-3 px-3 py-3 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition"
             >
               <span className="text-sm font-medium">Home</span>
+            </Link>
+            <Link
+              href="/income-tax-calculator"
+              onClick={() => setIsMenuOpen(false)}
+              className="flex items-center gap-3 px-3 py-3 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+            >
+              <span className="text-sm font-medium">Income Tax Calculator</span>
+            </Link>
+            <Link
+              href="/Salary-Calculator"
+              onClick={() => setIsMenuOpen(false)}
+              className="flex items-center gap-3 px-3 py-3 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+            >
+              <span className="text-sm font-medium">Salary Calculator</span>
             </Link>
             {/* Add other mobile nav items: Calculator, About, Contact */}
           </nav>

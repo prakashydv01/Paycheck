@@ -36,7 +36,7 @@ export default function IncomeTaxArticle() {
     : "text-gray-900";
 
   return (
-    <article className={`max-w-4xl mx-auto px-4 py-10 transition-colors duration-300 mt-20 ${themeClasses}`}>
+    <article className={`max-w-4xl mx-auto px-4 py-10 transition-colors duration-300 mt-20 mb-20 ${themeClasses}`}>
       {/* TITLE */}
       <h1 className={`text-3xl font-bold mb-4 ${headingClasses}`}>
         US Income Tax Calculator (2025): Estimate Your Federal Taxes & Take-Home Pay
