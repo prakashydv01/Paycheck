@@ -499,7 +499,7 @@ export default function PaycheckCalculator(): React.ReactElement {
                         <Cell key={`cell-${index}`} fill={palette[index % palette.length]} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(value: number) => fmt(value)} />
+                    <Tooltip formatter={(value) => fmt(Number(value))} />
                     <Legend verticalAlign="bottom" layout="horizontal" />
                   </PieChart>
                 </ResponsiveContainer>
