@@ -1,6 +1,9 @@
 "use client";
 import React, { useEffect, useMemo, useState } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
+import {
+  STATE_LIST, STATE_TAX_YEAR, STATE_DATA_AS_OF, stateCaveats, calcStateTax, defaultLocalRate, localHintFor,
+} from "../page-components/Statetax";
 
 /**
  * US Paycheck Calculator (TSX) — corrected federal + FICA logic
@@ -14,7 +17,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recha
  *  5. Tax-year selector (default 2026).
  *  6. Input sanitising (no NaN / negatives), rounding only at display time.
  *
- * NOTE: State tax is still a rough proxy. Replace STATE_RATES with real state withholding logic.
+ * State income tax, local tax and employee-paid state payroll taxes come from ./stateTax (2026 rules, all 50 states + DC).
  * Requires: npm i recharts jspdf
  */
 
@@ -30,13 +33,7 @@ const PAY_PERIODS: Record<PayPeriod, number> = {
   monthly: 12,
 };
 
-const STATES = [
-  "Alabama","Alaska","Arizona","Arkansas","California","Colorado","Connecticut","Delaware","Florida","Georgia",
-  "Hawaii","Idaho","Illinois","Indiana","Iowa","Kansas","Kentucky","Louisiana","Maine","Maryland","Massachusetts",
-  "Michigan","Minnesota","Mississippi","Missouri","Montana","Nebraska","Nevada","New Hampshire","New Jersey","New Mexico",
-  "New York","North Carolina","North Dakota","Ohio","Oklahoma","Oregon","Pennsylvania","Rhode Island","South Carolina",
-  "South Dakota","Tennessee","Texas","Utah","Vermont","Virginia","Washington","West Virginia","Wisconsin","Wyoming",
-];
+const STATES = STATE_LIST;
 
 /* ------------------------------------------------------------------ */
 /*  Federal tax data (verify annually against the IRS Rev. Proc.)     */
@@ -97,17 +94,6 @@ function bracketTax(taxable: number, brackets: Bracket[]): number {
 }
 
 /* ------------------------------------------------------------------ */
-/*  State tax — ROUGH PROXY ONLY (replace with real tables)           */
-/* ------------------------------------------------------------------ */
-
-const NO_WAGE_TAX_STATES = new Set([
-  "Alaska", "Florida", "Nevada", "New Hampshire", "South Dakota", "Tennessee", "Texas", "Washington", "Wyoming",
-]);
-const STATE_RATES: Record<string, number> = { California: 9.3, "New York": 6.0 };
-const DEFAULT_STATE_RATE = 4.5;
-const stateRateFor = (s: string) => (NO_WAGE_TAX_STATES.has(s) ? 0 : STATE_RATES[s] ?? DEFAULT_STATE_RATE);
-
-/* ------------------------------------------------------------------ */
 
 const r2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 const toNum = (v: string, max = Infinity) => {
@@ -132,6 +118,7 @@ export default function PaycheckCalculator(): React.ReactElement {
   const [preTaxBenefits, setPreTaxBenefits] = useState<number>(0);
   const [additionalWithholding, setAdditionalWithholding] = useState<number>(0);
   const [postTaxDeduction, setPostTaxDeduction] = useState<number>(0);
+  const [localRate, setLocalRate] = useState<string>(""); // "" = use the state's typical local rate
 
   useEffect(() => {
     try {
@@ -144,14 +131,13 @@ export default function PaycheckCalculator(): React.ReactElement {
   }, []);
 
   const periods = PAY_PERIODS[payPeriod];
-  const stateRate = stateRateFor(state);
 
   const calc = useMemo(() => {
     const data = TAX_DATA[taxYear];
 
     // Gross pay for one pay period
     const gross = isHourly
-      ? hourlyRate * hours + overtimeHours * hourlyRate * overtimeMultiplier
+      ? (hourlyRate * hours + overtimeHours * hourlyRate * overtimeMultiplier) * (52 / periods) // hours are entered per week
       : salary / periods;
 
     // Pre-tax deductions
@@ -174,25 +160,38 @@ export default function PaycheckCalculator(): React.ReactElement {
     const addlMedicare =
       (Math.max(0, annualFicaWages - ADDL_MEDICARE_THRESHOLD) * ADDL_MEDICARE_RATE) / periods;
 
-    // State (rough proxy)
-    const stateTax = federalWagesPerPay * (stateRate / 100);
+    // State income tax, local tax and employee-paid state payroll taxes (see stateTax.ts)
+    const st = calcStateTax({
+      state,
+      filing: filingStatus,
+      grossAnnual: gross * periods,
+      k401Annual: retirement * periods,
+      sec125Annual: benefits * periods,
+      federalTaxAnnual: annualFederal,
+      dependents,
+      localRatePct: localRate === "" ? undefined : toNum(localRate, 100),
+    });
+    const stateTax = st.incomeTax / periods;
+    const localTax = st.local / periods;
+    const statePayroll = st.payroll.map((p) => ({ name: p.name, amount: p.amount / periods }));
+    const stateAll = stateTax + localTax + st.payrollTotal / periods;
 
-    const totalTaxes = federal + stateTax + socialSecurity + medicare + addlMedicare + additionalWithholding;
+    const totalTaxes = federal + stateAll + socialSecurity + medicare + addlMedicare + additionalWithholding;
     const net = gross - retirement - benefits - totalTaxes - postTaxDeduction;
 
     return {
       gross, retirement, benefits, federalWagesPerPay, annualTaxable,
-      federal, stateTax, socialSecurity, medicare, addlMedicare, totalTaxes, net,
+      federal, stateTax, localTax, statePayroll, stateAll, st, socialSecurity, medicare, addlMedicare, totalTaxes, net,
       effectiveFederalRate: gross > 0 ? federal / gross : 0,
     };
   }, [
     taxYear, isHourly, hourlyRate, hours, overtimeHours, overtimeMultiplier, salary, periods,
-    preTaxRetirementPercent, preTaxBenefits, filingStatus, dependents, stateRate,
+    preTaxRetirementPercent, preTaxBenefits, filingStatus, dependents, state, localRate,
     additionalWithholding, postTaxDeduction,
   ]);
 
   const {
-    gross, retirement, benefits, federalWagesPerPay, annualTaxable, federal, stateTax,
+    gross, retirement, benefits, federalWagesPerPay, annualTaxable, federal, stateTax, localTax, statePayroll, stateAll, st,
     socialSecurity, medicare, addlMedicare, net,
   } = calc;
 
@@ -205,11 +204,11 @@ export default function PaycheckCalculator(): React.ReactElement {
     return [
       { name: "Net", value: safe(net) },
       { name: "Federal", value: safe(federal + additionalWithholding) },
-      { name: "State", value: safe(stateTax) },
+      { name: "State & local", value: safe(stateAll) },
       { name: "FICA", value: safe(socialSecurity + medicare + addlMedicare) },
       { name: "Deductions", value: safe(retirement + benefits + postTaxDeduction) },
     ].filter((d) => d.value > 0);
-  }, [net, federal, additionalWithholding, stateTax, socialSecurity, medicare, addlMedicare, retirement, benefits, postTaxDeduction]);
+  }, [net, federal, additionalWithholding, stateAll, socialSecurity, medicare, addlMedicare, retirement, benefits, postTaxDeduction]);
 
   const COLORS_DARK = ["#34D399", "#60A5FA", "#F472B6", "#F59E0B", "#94A3B8"];
   const COLORS_LIGHT = ["#059669", "#2563EB", "#DB2777", "#B45309", "#475569"];
@@ -225,7 +224,9 @@ export default function PaycheckCalculator(): React.ReactElement {
     ["Pre-tax benefits", benefits],
     ["Federal taxable wages", federalWagesPerPay],
     ["Federal income tax", federal],
-    ["State (rough estimate)", stateTax],
+    ["State income tax", stateTax],
+    ["Local income tax", localTax],
+    ...statePayroll.map((p): [string, number] => [p.name, p.amount]),
     ["Social Security", socialSecurity],
     ["Medicare", medicare],
     ["Additional Medicare", addlMedicare],
@@ -318,11 +319,11 @@ export default function PaycheckCalculator(): React.ReactElement {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className={labelCls}>Hours (per pay)</label>
+                  <label className={labelCls}>Hours per week</label>
                   <input className={inputCls} type="number" value={hours} onChange={(e) => setHours(toNum(e.target.value))} min={0} />
                 </div>
                 <div>
-                  <label className={labelCls}>OT hours</label>
+                  <label className={labelCls}>OT hours per week</label>
                   <input className={inputCls} type="number" value={overtimeHours} onChange={(e) => setOvertimeHours(toNum(e.target.value))} min={0} />
                 </div>
               </div>
@@ -370,11 +371,26 @@ export default function PaycheckCalculator(): React.ReactElement {
 
               <div>
                 <label className={labelCls}>State</label>
-                <select className={inputCls} value={state} onChange={(e) => setState(e.target.value)}>
+                <select className={inputCls} value={state} onChange={(e) => { setState(e.target.value); setLocalRate(""); }}>
                   {STATES.map((s) => (
                     <option key={s} value={s}>{s}</option>
                   ))}
                 </select>
+              </div>
+
+              <div>
+                <label className={labelCls}>Local income tax (%, optional)</label>
+                <input
+                  className={inputCls}
+                  type="text"
+                  inputMode="decimal"
+                  value={localRate}
+                  placeholder={String(defaultLocalRate(state))}
+                  onChange={(e) => setLocalRate(e.target.value.replace(/[^0-9.]/g, ""))}
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  {localHintFor(state) ?? "City or county wage taxes, if any. Leave blank for none."}
+                </p>
               </div>
 
               <div>
@@ -423,7 +439,7 @@ export default function PaycheckCalculator(): React.ReactElement {
             <button
               onClick={() => {
                 setIsHourly(true); setHourlyRate(30); setHours(40); setOvertimeHours(0); setOvertimeMultiplier(1.5);
-                setSalary(65000); setTaxYear("2026"); setFilingStatus("single"); setState("California"); setDependents(0);
+                setSalary(65000); setTaxYear("2026"); setFilingStatus("single"); setState("California"); setLocalRate(""); setDependents(0);
                 setPreTaxRetirementPercent(5); setPreTaxBenefits(0); setAdditionalWithholding(0); setPostTaxDeduction(0);
               }}
               className="w-full sm:flex-1 py-3 rounded border border-gray-600"
@@ -452,7 +468,11 @@ export default function PaycheckCalculator(): React.ReactElement {
             {benefits > 0 && <div className="flex justify-between"><span>Pre-tax benefits</span><span>{fmt(r2(benefits))}</span></div>}
             <div className="flex justify-between"><span>Federal taxable wages</span><span>{fmt(r2(federalWagesPerPay))}</span></div>
             <div className="flex justify-between"><span>Federal income tax</span><span>{fmt(r2(federal))}</span></div>
-            <div className="flex justify-between"><span>State ({stateRate}%, rough estimate)</span><span>{fmt(r2(stateTax))}</span></div>
+            <div className="flex justify-between"><span>State income tax ({state})</span><span>{fmt(r2(stateTax))}</span></div>
+            {localTax > 0 && <div className="flex justify-between"><span>Local income tax</span><span>{fmt(r2(localTax))}</span></div>}
+            {statePayroll.map((p) => p.amount > 0 && (
+              <div key={p.name} className="flex justify-between"><span>{p.name}</span><span>{fmt(r2(p.amount))}</span></div>
+            ))}
             <div className="flex justify-between"><span>Social Security</span><span>{fmt(r2(socialSecurity))}</span></div>
             <div className="flex justify-between"><span>Medicare</span><span>{fmt(r2(medicare))}</span></div>
             {addlMedicare > 0 && <div className="flex justify-between"><span>Additional Medicare (0.9%)</span><span>{fmt(r2(addlMedicare))}</span></div>}
@@ -475,7 +495,8 @@ export default function PaycheckCalculator(): React.ReactElement {
               <ul className="list-disc ml-5 mt-1 space-y-1">
                 <li>Federal tax uses the {taxYear} IRS brackets and standard deduction for your filing status, annualised from this paycheck, plus a $2,200 credit per child under 17.</li>
                 <li>Social Security and Medicare apply to gross wages (401(k) deferrals are not exempt). Social Security stops at the {taxYear} wage base.</li>
-                <li>State tax is a rough flat estimate, not an official withholding table. Local taxes, state disability (SDI), garnishments and bonuses are not included.</li>
+                <li>State figures use {STATE_TAX_YEAR} rules (data as of {STATE_DATA_AS_OF}){taxYear === "2025" ? " even though the federal year is set to 2025" : ""}. Garnishments and bonuses are not included.</li>
+                {Array.from(new Set([...stateCaveats(state, filingStatus), ...st.notes])).map((n) => <li key={n}>{n}</li>)}
                 <li>Your employer&apos;s actual withholding depends on your W-4 and may differ. See the IRS Tax Withholding Estimator for exact figures.</li>
               </ul>
             </div>
